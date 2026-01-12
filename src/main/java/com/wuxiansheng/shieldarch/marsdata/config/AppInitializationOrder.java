@@ -36,7 +36,7 @@ import org.springframework.stereotype.Component;
  * 注意：
  * - 内部SDK（DirPC、Dufe）需要替换为真实的Java SDK实现
  * - 服务发现已使用 Nacos 替换 DiSF
- * - 监控工具（pprof、Odin）在Java中可以使用Spring Boot Actuator替代
+ * - 监控已使用 Prometheus + Spring Boot Actuator（替代 Odin）
  */
 @Slf4j
 @Component
@@ -60,9 +60,9 @@ public class AppInitializationOrder {
      * 13. registerTask - 注册定时任务
      * 
      * 启动顺序：
-     * 1. pprof监控启动
+     * 1. pprof监控启动（Spring Boot Actuator）
      * 2. HTTP服务器启动
-     * 3. Odin监控启动
+     * 3. Prometheus 指标暴露（/actuator/prometheus）
      * 4. MQ Consumer启动
      * 5. 定时任务调度器启动
      */
