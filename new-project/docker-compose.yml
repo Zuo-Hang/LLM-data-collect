@@ -1,0 +1,183 @@
+version: '3.8'
+
+services:
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: ai-orchestrator-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redis123456
+    volumes:
+      - redis-data:/data
+    networks:
+      - ai-orchestrator-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: ai-orchestrator-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - ai-orchestrator-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RocketMQ NameServer
+  rocketmq-nameserver:
+    image: apache/rocketmq:5.2.0
+    container_name: ai-orchestrator-rocketmq-nameserver
+    ports:
+      - "9876:9876"
+    environment:
+      - JAVA_OPT_EXT=-server -Xms512m -Xmx512m -Xmn256m
+    volumes:
+      - rocketmq-nameserver-logs:/home/rocketmq/logs
+    networks:
+      - ai-orchestrator-network
+    command: sh mqnamesrv
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -an | grep 9876"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:5.2.0
+    container_name: ai-orchestrator-rocketmq-broker
+    ports:
+      - "10909:10909"  # VIP 通道
+      - "10911:10911"  # 主端口
+      - "10912:10912"  # HA 端口
+    environment:
+      - JAVA_OPT_EXT=-server -Xms1g -Xmx1g -Xmn512m
+      - NAMESRV_ADDR=rocketmq-nameserver:9876
+    volumes:
+      - rocketmq-broker-logs:/home/rocketmq/logs
+      - rocketmq-broker-store:/home/rocketmq/store
+    networks:
+      - ai-orchestrator-network
+    depends_on:
+      - rocketmq-nameserver
+    command: sh mqbroker -n rocketmq-nameserver:9876
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -an | grep 10911"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO
+  minio:
+    image: minio/minio:latest
+    container_name: ai-orchestrator-minio
+    ports:
+      - "9000:9000"   # API port
+      - "9001:9001"   # Console port
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - ai-orchestrator-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: ai-orchestrator-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ai_orchestrator
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ai-orchestrator-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-orchestrator-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-grafana/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus-grafana/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - ai-orchestrator-network
+    depends_on:
+      - redis
+      - rabbitmq
+      - minio
+      - mysql
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-orchestrator-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./prometheus-grafana/grafana/provisioning:/etc/grafana/provisioning
+      - ./prometheus-grafana/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - ai-orchestrator-network
+    depends_on:
+      - prometheus
+
+volumes:
+  redis-data:
+  rabbitmq-data:
+  minio-data:
+  mysql-data:
+  rocketmq-nameserver-logs:
+  rocketmq-broker-logs:
+  rocketmq-broker-store:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  ai-orchestrator-network:
+    driver: bridge

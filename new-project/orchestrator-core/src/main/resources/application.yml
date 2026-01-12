@@ -1,0 +1,157 @@
+spring:
+  application:
+    name: ai-agent-orchestrator
+  profiles:
+    active: ${APP_ENV:dev}
+
+# 应用配置
+app:
+  http-port: ":8080"
+  env: ${APP_ENV:dev}
+
+# Redis配置
+spring:
+  data:
+    redisson:
+      config: |
+        singleServerConfig:
+          address: ${REDIS_ADDRESS:redis://localhost:6379}
+          password: ${REDIS_PASSWORD:redis123456}
+          connectionPoolSize: 100
+          connectionMinimumIdleSize: 10
+          idleConnectionTimeout: 300000
+          connectTimeout: 3000
+          timeout: 3000
+
+# MySQL配置
+mysql:
+  enabled: true
+  switch: ${MYSQL_SWITCH:true}
+  addr: ${MYSQL_ADDR:}
+  service-name: ${MYSQL_SERVICE_NAME:}
+  max-open-conn: 100
+  max-idle-conn: 10
+  max-life-time: 3600
+
+# 数据源配置（使用Druid）
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${MYSQL_URL:jdbc:mysql://localhost:3306/ai_orchestrator?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:}
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 100
+      max-wait: 60000
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+
+# MyBatis Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# RabbitMQ配置
+spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123}
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: auto
+        concurrency: 5
+        max-concurrency: 10
+        prefetch: 10
+
+# RocketMQ配置
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: ${ROCKETMQ_PRODUCER_GROUP:ai-orchestrator-producer-group}
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 3
+    retry-times-when-send-async-failed: 3
+    max-message-size: 4194304
+    compress-message-body-threshold: 4096
+
+# Nacos 配置（服务发现 + 配置中心）
+nacos:
+  enabled: ${NACOS_ENABLED:true}
+  server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+  namespace: ${NACOS_NAMESPACE:}
+  username: ${NACOS_USERNAME:nacos}
+  password: ${NACOS_PASSWORD:nacos}
+  config:
+    enabled: ${NACOS_CONFIG_ENABLED:true}
+    group: ${NACOS_CONFIG_GROUP:DEFAULT_GROUP}
+    app-id: ${NACOS_CONFIG_APP_ID:ai-agent-orchestrator}
+    fallback-to-local: ${NACOS_CONFIG_FALLBACK_TO_LOCAL:true}
+  service-registry:
+    enabled: ${NACOS_SERVICE_REGISTRY_ENABLED:true}
+    service-name: ${NACOS_SERVICE_REGISTRY_SERVICE_NAME:${spring.application.name}}
+    group-name: ${NACOS_SERVICE_REGISTRY_GROUP_NAME:DEFAULT_GROUP}
+    ip: ${NACOS_SERVICE_REGISTRY_IP:}
+    weight: ${NACOS_SERVICE_REGISTRY_WEIGHT:1.0}
+    healthy: ${NACOS_SERVICE_REGISTRY_HEALTHY:true}
+    ephemeral: ${NACOS_SERVICE_REGISTRY_EPHEMERAL:true}
+    metadata: ${NACOS_SERVICE_REGISTRY_METADATA:}
+
+# MinIO配置
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  bucket-name: ${MINIO_BUCKET:ai-orchestrator}
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.wuxiansheng.shieldarch.orchestrator: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: ./log/ai-agent-orchestrator.log
+    max-size: 100MB
+    max-history: 30
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${app.env:dev}
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
