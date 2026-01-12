@@ -8,14 +8,16 @@
 |------|--------|---------|------|
 | **DiSF** | 滴滴服务发现 | **Nacos** | ✅ 已完成 |
 | - | DiSFUtils | NacosServiceDiscovery | ✅ 已完成 |
+| **Dufe** | 特征服务 | **MySQL 表（supplier_response_rate）** | ✅ 已完成 |
+| - | DufeClient | SupplierResponseRateService | ✅ 已完成 |
+| **DirPC** | RPC 框架 | **已删除（未使用）** | - | ✅ 已完成 |
+| - | DirPCInitializer | 已删除 | ✅ 已完成 |
 
 ### ⚠️ 待替换
 
 | 组件 | 用途 | 当前状态 | 推荐替换方案 | 优先级 |
 |------|------|---------|------------|--------|
 | **Apollo** | 配置中心 | 使用中 | **Nacos 配置中心** | 🔴 高 |
-| **DirPC** | 未知（可能是 RPC 框架） | 占位实现 | **gRPC** 或 **Dubbo** | 🟡 中 |
-| **Dufe** | 特征服务 | 占位实现 | **自定义 HTTP 服务** 或 **Feature Store** | 🟡 中 |
 | **Odin** | 监控平台 | 已删除 | **Prometheus + Grafana** + **Spring Boot Actuator** | ✅ 已完成 |
 
 ### 📝 遗留代码（可清理）
@@ -54,57 +56,37 @@
 
 ---
 
-## 🟡 中优先级：DirPC
+## ✅ 已完成：DirPC
 
-### 当前状态
+### 删除状态
 
-- **文件**: `config/DirPCInitializer.java`
-- **状态**: 占位实现，未真正使用
-- **用途**: 未知（可能是滴滴内部的 RPC 框架）
-
-### 替换方案
-
-**方案 1: gRPC**（推荐）
-- 标准化的 RPC 框架
-- 跨语言支持
-- 高性能
-
-**方案 2: Dubbo**
-- Java 生态成熟
-- 服务治理完善
-- 如果已有 Dubbo 基础设施
-
-**方案 3: Spring Cloud OpenFeign**
-- 与 Spring Boot 集成好
-- 基于 HTTP，简单易用
-
-**建议**: 如果 DirPC 未实际使用，可以先删除相关代码。
+- **原文件**: `config/DirPCInitializer.java` ✅ 已删除
+- **状态**: 已确认未实际使用，已删除
+- **原因**: 只是占位实现，没有实际的 RPC 调用，无其他代码依赖
 
 ---
 
-## 🟡 中优先级：Dufe 特征服务
+## ✅ 已完成：Dufe 特征服务
 
-### 当前状态
+### 替换状态
 
-- **文件**: `io/DufeClient.java`
-- **状态**: 占位实现，返回空结果
-- **用途**: 获取模板特征（特征工程服务）
+- **原文件**: `io/DufeClient.java` ✅ 已删除
+- **新实现**: `io/SupplierResponseRateService.java`
+- **状态**: 已完全替换为 MySQL 数据库查询
+- **数据表**: `supplier_response_rate`
 
-### 替换方案
+### 替换方案（已实施）
 
-**方案 1: 自定义 HTTP 服务**
-- 如果特征服务是独立的 HTTP 服务
-- 使用 RestTemplate 或 WebClient 调用
+**✅ MySQL 数据库存储**
+- 使用 MySQL 表存储供应商应答概率
+- 通过 MyBatis Plus 进行数据访问
+- 表结构：`supplier_response_rate`（city_name, partner_name, response_rate）
+- 支持逻辑删除和自动时间戳
 
-**方案 2: Feature Store**
-- 使用开源的 Feature Store（如 Feast）
-- 适合特征工程场景
-
-**方案 3: Redis/数据库存储**
-- 如果特征数据可以预计算
-- 存储在 Redis 或数据库中
-
-**建议**: 根据实际业务需求选择方案。
+**实现细节**:
+- `SupplierResponseRateService`: 服务层，提供 `getResponseRate()` 方法
+- `SupplierResponseRateMapper`: 数据访问层，查询 MySQL
+- `SupplierResponseRate`: 实体类，映射数据库表
 
 ---
 
@@ -143,12 +125,11 @@
 
 ### 第二阶段（中优先级）
 
-2. **DirPC 清理或替换**
-   - 如果未使用，直接删除
-   - 如果使用，替换为 gRPC 或 Dubbo
+2. ~~**DirPC 清理或替换**~~ ✅ 已完成
+   - 已确认未使用，已删除
 
-3. **Dufe 特征服务**
-   - 根据实际业务需求实现
+3. ~~**Dufe 特征服务**~~ ✅ 已完成
+   - 已替换为 MySQL 数据库查询
    - 或使用 Feature Store
 
 ### 第三阶段（已完成）
@@ -174,14 +155,6 @@
 - 需要创建 Nacos 配置服务适配层
 - 需要迁移配置数据
 - 需要更新所有调用点
-
-### DirPC 替换影响
-
-**影响文件**: 1 个文件
-- `config/DirPCInitializer.java`
-
-**工作量**: 低（如果未使用）
-- 如果未使用，直接删除即可
 
 ### Dufe 替换影响
 

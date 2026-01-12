@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @SpringBootApplication
 @EnableScheduling
-@MapperScan("com.wuxiansheng.shieldarch.marsdata.business.*.sinker")
+@MapperScan({"com.wuxiansheng.shieldarch.marsdata.business.*.sinker", "com.wuxiansheng.shieldarch.marsdata.io"})
 public class LLMDataCollectApplication {
 
     public static void main(String[] args) {

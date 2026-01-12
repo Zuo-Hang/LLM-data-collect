@@ -8,19 +8,23 @@
 
 ## 技术栈
 
-- Spring Boot 3.2.0
-- Java 17
-- RocketMQ 5.1.4
-- MySQL 8.0+ (MyBatis Plus)
-- Redis (Redisson)
-- Apollo 配置中心
-- MinIO S3
+- **框架**: Spring Boot 3.2.0
+- **语言**: Java 21
+- **消息队列**: RocketMQ 5.1.4
+- **数据库**: MySQL 8.0+ (MyBatis Plus + Druid)
+- **缓存**: Redis (Redisson)
+- **配置中心**: Nacos Config（已替换 Apollo）
+- **服务发现**: Nacos（已替换 DiSF）
+- **对象存储**: MinIO S3
+- **视频处理**: JavaCV Platform (FFmpeg/OpenCV)
+- **LLM 框架**: LangChain4j 0.29.1
+- **监控**: Prometheus + Grafana + AlertManager（已替换 StatsD/Odin）
 
 ## 快速开始
 
 ### 环境要求
 
-- JDK 17+
+- JDK 21+
 - Maven 3.6+
 - MySQL 8.0+
 - Redis 6.0+
@@ -67,7 +71,29 @@ src/main/java/com/wuxiansheng/shieldarch/marsdata/
 └── utils/         # 工具类
 ```
 
-## 注意事项
+## 核心特性
 
-- 部分内部 SDK（DiSF、DirPC、Dufe）需要替换为 Java 实现
-- 生产环境建议通过环境变量或 Apollo 管理敏感配置
+- ✅ **多业务支持**: 6 个业务模块（BSaaS、券包、高德、小拉等）
+- ✅ **多模态 LLM**: 支持文本 + 图片的 LLM 调用
+- ✅ **流式视频处理**: 内存流处理，避免本地文件存储
+- ✅ **完整监控**: Prometheus + Grafana + AlertManager
+- ✅ **配置中心**: Nacos 配置管理，支持本地回退
+- ✅ **服务发现**: Nacos 统一服务发现
+- ✅ **定时任务**: 价格拟合、数据完整性检查、视频列表扫描
+
+## 已完成的替换
+
+- ✅ **DiSF → Nacos**: 服务发现已完全替换
+- ✅ **Apollo → Nacos**: 配置中心已完全替换
+- ✅ **StatsD/Odin → Prometheus**: 监控已完全替换
+
+## 待完成的工作
+
+无
+
+## 详细文档
+
+- [项目实现总结](docs/PROJECT_IMPLEMENTATION_SUMMARY.md) - 完整的项目架构和实现说明
+- [滴滴组件替换清单](DIDI_COMPONENTS_REPLACEMENT.md) - 组件替换状态
+- [Prometheus 监控指南](docker/README_PROMETHEUS.md) - 监控配置说明
+- [Nacos 服务发现](src/main/java/com/wuxiansheng/shieldarch/marsdata/utils/README_NACOS_SERVICE_DISCOVERY.md) - 服务发现使用说明

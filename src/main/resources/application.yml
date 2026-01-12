@@ -162,3 +162,13 @@ nacos:
     app-id: ${NACOS_CONFIG_APP_ID:llm-data-collect}
     # 是否启用本地配置回退（当 Nacos 不可用时，从 classpath:config/ 目录加载配置）
     fallback-to-local: ${NACOS_CONFIG_FALLBACK_TO_LOCAL:true}
+  # 服务注册配置
+  service-registry:
+    enabled: ${NACOS_SERVICE_REGISTRY_ENABLED:true}
+    service-name: ${NACOS_SERVICE_REGISTRY_SERVICE_NAME:${spring.application.name}}
+    group-name: ${NACOS_SERVICE_REGISTRY_GROUP_NAME:DEFAULT_GROUP}
+    ip: ${NACOS_SERVICE_REGISTRY_IP:}  # 留空则自动获取本机 IP
+    weight: ${NACOS_SERVICE_REGISTRY_WEIGHT:1.0}  # 服务权重
+    healthy: ${NACOS_SERVICE_REGISTRY_HEALTHY:true}  # 是否健康
+    ephemeral: ${NACOS_SERVICE_REGISTRY_EPHEMERAL:true}  # 是否临时实例（临时实例会在服务下线时自动删除）
+    metadata: ${NACOS_SERVICE_REGISTRY_METADATA:}  # 元数据（格式：key1=value1,key2=value2）

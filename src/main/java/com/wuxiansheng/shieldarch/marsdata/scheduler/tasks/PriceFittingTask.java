@@ -2,7 +2,7 @@ package com.wuxiansheng.shieldarch.marsdata.scheduler.tasks;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wuxiansheng.shieldarch.marsdata.config.PriceFittingConfigService;
-import com.wuxiansheng.shieldarch.marsdata.io.DufeClient;
+import com.wuxiansheng.shieldarch.marsdata.io.SupplierResponseRateService;
 import com.wuxiansheng.shieldarch.marsdata.monitor.MetricsClientAdapter;
 import com.wuxiansheng.shieldarch.marsdata.scheduler.LockedTask;
 import com.wuxiansheng.shieldarch.marsdata.scheduler.repository.EconomyBubble;
@@ -33,26 +33,25 @@ public class PriceFittingTask implements LockedTask {
     private static final String PRICE_FITTING_MATCHED_METRIC = "price_fitting_matched_count";
     private static final String PRICE_FITTING_MISSING_RESPONSE_RATE = "price_fitting_missing_response_rate";
 
-    // Dufe 模板ID
-    private static final String DUFE_TEMPLATE_ID = "dufe-b835c16d-e026-4986-82d2-15a202a8a058";
-    private static final String DUFE_FEATURE_KEY = "o_supplier_rate";
+    // 供应商应答概率查询配置
+    private static final String FEATURE_KEY = "o_supplier_rate";
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PriceFittingRepository repository;
     private final PriceFittingConfigService configService;
-    private final DufeClient dufeClient;
+    private final SupplierResponseRateService supplierResponseRateService;
     private final MetricsClientAdapter metricsClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public PriceFittingTask(PriceFittingRepository repository,
                            PriceFittingConfigService configService,
-                           DufeClient dufeClient,
+                           SupplierResponseRateService supplierResponseRateService,
                            MetricsClientAdapter metricsClient) {
         this.repository = repository;
         this.configService = configService;
-        this.dufeClient = dufeClient;
+        this.supplierResponseRateService = supplierResponseRateService;
         this.metricsClient = metricsClient;
     }
 
@@ -207,13 +206,13 @@ public class PriceFittingTask implements LockedTask {
     // ==================== 应答概率模块 ====================
 
     /**
-     * 使用 dufe 查询应答概率
+     * 查询供应商应答概率
      */
     private Map<String, Double> getResponseRates(Set<CityPartnerKey> uniqueKeys) {
         Map<String, Double> responseRateMap = new HashMap<>();
 
-        if (!dufeClient.isAvailable()) {
-            log.info("[PriceFittingTask] getResponseRates: dufe 服务不可用，使用默认应答概率(warn)");
+        if (!supplierResponseRateService.isAvailable()) {
+            log.info("[PriceFittingTask] getResponseRates: 供应商应答概率服务不可用，使用默认应答概率(warn)");
             return responseRateMap;
         }
 
@@ -230,15 +229,15 @@ public class PriceFittingTask implements LockedTask {
             params.put("partner_name", key.partnerName);
 
             try {
-                Map<String, String> features = dufeClient.getTemplateFeature(DUFE_TEMPLATE_ID, params);
+                Map<String, String> features = supplierResponseRateService.getResponseRate(params);
                 if (features == null || features.isEmpty()) {
                     failCount++;
-                    log.info("[PriceFittingTask] getResponseRates: dufe 返回为空(warn)[{}/{}]: city_name={}, partner_name={}",
+                    log.info("[PriceFittingTask] getResponseRates: 供应商应答概率返回为空(warn)[{}/{}]: city_name={}, partner_name={}",
                             totalQueries, uniqueKeys.size(), key.cityName, key.partnerName);
                     continue;
                 }
 
-                String responseRateStr = features.get(DUFE_FEATURE_KEY);
+                String responseRateStr = features.get(FEATURE_KEY);
                 if (responseRateStr == null || responseRateStr.isEmpty()) {
                     Map<String, String> missing = new HashMap<>();
                     missing.put("city_name", key.cityName);
@@ -259,7 +258,7 @@ public class PriceFittingTask implements LockedTask {
                 }
             } catch (Exception e) {
                 failCount++;
-                log.info("[PriceFittingTask] getResponseRates: dufe 查询应答概率失败(warn)[{}/{}]: city_name={}, partner_name={}, err={}",
+                log.info("[PriceFittingTask] getResponseRates: 供应商应答概率查询失败(warn)[{}/{}]: city_name={}, partner_name={}, err={}",
                         totalQueries, uniqueKeys.size(), key.cityName, key.partnerName, e.getMessage());
             }
         }
@@ -272,7 +271,7 @@ public class PriceFittingTask implements LockedTask {
                 String missingJson = objectMapper.writeValueAsString(missingFeatureRequests);
                 missingInfo = ", 缺少 o_supplier_rate 字段的请求共 " + missingFeatureRequests.size() + " 个: " + missingJson;
             }
-            log.info("[PriceFittingTask] getResponseRates: 完成，共调用 dufe {} 次，成功获取 {} 条应答概率，失败 {} 次，成功获取的应答概率列表: {}{}",
+            log.info("[PriceFittingTask] getResponseRates: 完成，共查询 {} 次，成功获取 {} 条应答概率，失败 {} 次，成功获取的应答概率列表: {}{}",
                     totalQueries, successCount, failCount, successfulRatesJson, missingInfo);
         } catch (Exception e) {
             log.warn("[PriceFittingTask] 序列化应答概率统计失败", e);
