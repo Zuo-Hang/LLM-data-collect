@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: local-llm-client
+
+# 服务器配置
+server:
+  port: 8081  # 使用不同端口，避免与主项目冲突
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.wuxiansheng.shieldarch.llm: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# 本地模型配置
+local-llm:
+  # Ollama配置
+  ollama:
+    base-url: http://localhost:11434
+    # 默认模型：qwen2.5vl:latest（支持多模态）或 llama3:latest（纯文本）
+    model: qwen2.5vl:latest
+    timeout: 60000
+    # 可用模型列表
+    available-models:
+      - qwen2.5vl:latest
+      - llama3:latest
+  
+  # 文件上传配置
+  upload:
+    # 上传文件保存目录
+    directory: ./uploads
+    # 文件大小限制（MB）
+    max-size-mb: 10
+    # 允许的文件类型（逗号分隔）
+    allowed-types: image/jpeg,image/png,image/gif,image/webp
+  
+  # OCR服务配置（可选，用于自动OCR识别）
+  ocr:
+    # OCR服务端点（如果配置，上传图片或推理时会自动调用OCR）
+    endpoint: ${LOCAL_LLM_OCR_ENDPOINT:}
+    # 是否启用自动OCR（默认false，需要手动配置OCR服务端点）
+    enabled: ${LOCAL_LLM_OCR_ENABLED:false}
+    # OCR请求超时时间（秒）
+    timeout: 30
+  
+  # vLLM配置（可选）
+  vllm:
+    base-url: http://localhost:8000
+    model: qwen2.5-7b-instruct
+    timeout: 60000
+

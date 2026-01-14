@@ -21,6 +21,7 @@
         <module>state-store</module>
         <module>model-services/ocr-service</module>
         <module>model-services/detection-service</module>
+        <module>local-llm-client</module>
     </modules>
 
     <properties>

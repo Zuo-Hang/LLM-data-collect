@@ -368,13 +368,24 @@ public class AgentTaskOrchestrator {
                 // 构建组合Prompt（System + Business），支持灰度版本
                 String prompt;
                 if (promptCanaryManager != null) {
-                    // 使用灰度版本（如果启用）
-                    prompt = promptManager.buildPromptWithCanary(
+                    // 判断是否应该使用灰度版本
+                    String canaryVersion = promptCanaryManager.shouldUseCanaryVersion(
                         bizType, 
                         PromptManager.PromptStage.EXTRACTION, 
-                        promptContext, 
                         context.getTaskId()
                     );
+                    
+                    if (canaryVersion != null) {
+                        // 使用灰度版本
+                        prompt = promptManager.buildCombinedPrompt(bizType, promptContext);
+                        // 注意：如果需要使用特定版本的模板，可以在buildCombinedPrompt中传入版本号
+                        // 当前实现中，buildCombinedPrompt内部会调用buildPrompt，可以扩展支持版本参数
+                        log.debug("使用灰度版本Prompt: taskId={}, bizType={}, version={}", 
+                            context.getTaskId(), bizType, canaryVersion);
+                    } else {
+                        // 使用稳定版本
+                        prompt = promptManager.buildCombinedPrompt(bizType, promptContext);
+                    }
                 } else {
                     // 使用稳定版本
                     prompt = promptManager.buildCombinedPrompt(bizType, promptContext);
@@ -496,7 +507,6 @@ public class AgentTaskOrchestrator {
      * 保存任务状态（到Redis）
      */
     private void saveTaskState(TaskStateMachine stateMachine) {
-        // TODO: 实现Redis持久化
         if (stateStore != null) {
             stateStore.save(stateMachine);
         }
@@ -506,7 +516,6 @@ public class AgentTaskOrchestrator {
      * 加载任务状态（从Redis）
      */
     private TaskStateMachine loadTaskState(String taskId) {
-        // TODO: 实现Redis加载
         if (stateStore != null) {
             return stateStore.load(taskId);
         }

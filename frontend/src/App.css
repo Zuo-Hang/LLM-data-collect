@@ -7,3 +7,10 @@
   background: #f0f2f5;
 }
 
+/* 响应式布局：移动端侧边栏覆盖内容 */
+@media (max-width: 768px) {
+  .main-layout {
+    margin-left: 0 !important;
+  }
+}
+

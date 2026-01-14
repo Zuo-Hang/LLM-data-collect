@@ -13,6 +13,12 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // LLM API 代理到 local-llm-client (8081)
+      '/api/llm': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
+      // 其他 API 代理到主项目 (8080)
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
