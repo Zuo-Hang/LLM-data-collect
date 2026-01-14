@@ -6,6 +6,10 @@
 
 **AI Agent Orchestrator** 是一个具备状态、弹性、自愈和可观测性的分布式智能体编排系统。它不再是线性脚本，而是一个完整的分布式系统，用于编排和管理AI任务的生命周期，包括视频处理、OCR识别、LLM推理等复杂流程。
 
+系统支持两种LLM调用方式：
+- **云端LLM**：通过主应用的编排流程调用（集成在推理执行器中）
+- **本地LLM**：通过独立的 `local-llm-client` 模块调用本地部署的Ollama模型（支持多模态推理）
+
 ### 核心价值
 
 - ✅ **状态管理**：基于状态机实现任务的精准一次（Exactly-once）和断点续传
@@ -159,6 +163,7 @@
 ### AI/ML 框架
 - **LangChain4j 0.29.1**：LLM调用抽象
 - **JavaCV Platform 1.5.9**：视频处理（FFmpeg/OpenCV封装）
+- **Ollama**：本地大模型部署（支持 qwen2.5vl、llama3 等）
 
 ### 服务治理
 - **Nacos 2.3.0**：配置中心和服务发现
@@ -222,6 +227,17 @@ ai-agent-orchestrator/
 │   ├── ocr-service/            # OCR服务（可独立部署）
 │   └── detection-service/      # 检测服务（可独立部署）
 │
+├── local-llm-client/           # 本地LLM客户端（独立模块）
+│   ├── src/main/java/         # 源代码
+│   │   ├── LocalLLMClientApplication.java  # 启动类
+│   │   ├── controller/         # REST API控制器
+│   │   │   └── LocalLLMController.java
+│   │   └── service/           # 服务层
+│   │       └── LocalLLMService.java
+│   ├── src/main/resources/    # 配置文件
+│   │   └── application.yml
+│   └── README.md              # 模块说明文档
+│
 ├── frontend/                   # 前端项目（React + TypeScript + Vite）
 │   ├── src/                   # 源代码
 │   ├── package.json           # 依赖配置
@@ -253,7 +269,9 @@ ai-agent-orchestrator/
 
 - JDK 21+
 - Maven 3.6+
+- Node.js 18+ 和 npm（用于前端开发）
 - Docker & Docker Compose（用于启动依赖服务）
+- Ollama（可选，用于本地LLM功能，参考 [local-llm-client/README.md](local-llm-client/README.md)）
 
 ### 启动依赖服务
 
@@ -281,18 +299,38 @@ mvn clean package -pl orchestrator-core -am
 ### 运行应用
 
 ```bash
-# 运行主应用
+# 运行主应用（编排服务，端口 8080）
 cd orchestrator-core
 mvn spring-boot:run
 
 # 或使用jar包运行
 java -jar orchestrator-core/target/orchestrator-core-1.0.0-SNAPSHOT.jar
+
+# 运行本地LLM客户端（独立服务，端口 8081）
+cd local-llm-client
+mvn spring-boot:run
+
+# 或使用jar包运行
+java -jar local-llm-client/target/local-llm-client-1.0.0-SNAPSHOT.jar
+```
+
+### 启动前端
+
+```bash
+# 进入前端目录
+cd frontend
+
+# 安装依赖（首次运行）
+npm install
+
+# 启动开发服务器（端口 3000）
+npm run dev
 ```
 
 ### 验证服务
 
 ```bash
-# 健康检查
+# 主应用健康检查
 curl http://localhost:8080/api/health
 
 # Actuator健康检查
@@ -300,11 +338,25 @@ curl http://localhost:8080/actuator/health
 
 # Prometheus指标
 curl http://localhost:8080/actuator/prometheus
+
+# 本地LLM客户端健康检查
+curl http://localhost:8081/api/llm/health
+
+# 前端页面
+# 浏览器访问: http://localhost:3000
 ```
+
+### 访问服务
+
+- **前端页面**: http://localhost:3000
+  - 任务列表：http://localhost:3000/
+  - 本地LLM：http://localhost:3000/llm
+- **主应用API**: http://localhost:8080
+- **本地LLM客户端API**: http://localhost:8081
 
 ### 访问监控面板
 
-- **Grafana**: http://localhost:3000 (admin/admin123)
+- **Grafana**: http://localhost:3000 (admin/admin123) - 注意：与前端端口冲突，建议修改Grafana端口
 - **Prometheus**: http://localhost:9090
 - **AlertManager**: http://localhost:9093
 - **Nacos控制台**: http://localhost:8848/nacos (nacos/nacos)
@@ -363,11 +415,18 @@ curl http://localhost:8080/actuator/prometheus
 - 编排器核心框架（AgentTaskOrchestrator、TaskStateMachine）
 - 步骤执行器（FrameExtractExecutor、InferenceExecutor）
 - LLM集成（LangChain4j、LLM缓存）
+- **本地LLM客户端模块**（local-llm-client）
+  - 独立Spring Boot应用，支持本地Ollama模型调用
+  - 多模态推理支持（文本+图片）
+  - 文件上传功能
+  - Token使用量统计
+  - 前端交互页面
 - 视频处理（VideoExtractor、VideoMetadataExtractor）
 - 配置管理（Nacos Config）
 - 服务发现（Nacos Service Registry）
 - 监控系统（Prometheus + Grafana + AlertManager）
 - 状态存储（Redis、LLM缓存）
+- 前端页面（任务列表、本地LLM交互）
 
 ### 🚧 进行中
 - 质量治理层（DualCheckValidator、SelfCorrectionHandler）
@@ -400,12 +459,10 @@ curl http://localhost:8080/actuator/prometheus
 
 ## 📚 相关文档
 
-- [TODO.md](TODO.md) - 组件迁移待办清单
-- [架构对比分析](ARCHITECTURE_COMPARISON.md) - 新旧架构对比
-- [迁移总结](MIGRATION_SUMMARY.md) - 组件迁移总结
-- [旧项目最终状态](OLD_PROJECT_FINAL_STATUS.md) - 旧项目迁移完成状态
+- [本地LLM客户端文档](local-llm-client/README.md) - 本地LLM客户端使用说明
+- [前端快速开始](frontend/QUICK_START.md) - 前端开发指南
+- [Prompt工程概览](PROMPT_ENGINEERING_OVERVIEW.md) - Prompt工程架构说明
 - [参考代码](reference/old-project/README.md) - 旧项目参考代码说明
-- [归档说明](ARCHIVE.md) - 项目归档说明
 
 ## 🤝 贡献指南
 
