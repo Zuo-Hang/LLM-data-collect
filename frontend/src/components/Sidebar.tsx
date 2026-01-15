@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ScanOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -43,6 +44,11 @@ const Sidebar = () => {
       key: '/llm',
       icon: <RobotOutlined />,
       label: '本地LLM',
+    },
+    {
+      key: '/ocr',
+      icon: <ScanOutlined />,
+      label: 'OCR识别',
     },
     // 后续可以添加更多页面
     // {

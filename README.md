@@ -10,6 +10,9 @@
 - **云端LLM**：通过主应用的编排流程调用（集成在推理执行器中）
 - **本地LLM**：通过独立的 `local-llm-client` 模块调用本地部署的Ollama模型（支持多模态推理）
 
+系统还包含独立的OCR识别服务：
+- **OCR服务**：基于PaddleOCR的独立Python服务，提供HTTP API接口，支持图片文字识别（文本、置信度、位置坐标）
+
 ### 核心价值
 
 - ✅ **状态管理**：基于状态机实现任务的精准一次（Exactly-once）和断点续传
@@ -164,6 +167,7 @@
 - **LangChain4j 0.29.1**：LLM调用抽象
 - **JavaCV Platform 1.5.9**：视频处理（FFmpeg/OpenCV封装）
 - **Ollama**：本地大模型部署（支持 qwen2.5vl、llama3 等）
+- **PaddleOCR 3.3**：OCR文字识别（Python服务）
 
 ### 服务治理
 - **Nacos 2.3.0**：配置中心和服务发现
@@ -233,9 +237,18 @@ ai-agent-orchestrator/
 │   │   ├── controller/         # REST API控制器
 │   │   │   └── LocalLLMController.java
 │   │   └── service/           # 服务层
-│   │       └── LocalLLMService.java
+│   │       ├── LocalLLMService.java
+│   │       └── VideoQualityService.java     # 视频/图片清晰度判断
 │   ├── src/main/resources/    # 配置文件
 │   │   └── application.yml
+│   └── README.md              # 模块说明文档
+│
+├── ocr-service-python/        # OCR识别服务（独立Python模块）
+│   ├── app.py                 # FastAPI主程序
+│   ├── ocr_service.py         # PaddleOCR服务封装
+│   ├── config.py              # 配置文件
+│   ├── requirements.txt       # Python依赖
+│   ├── start.sh               # 启动脚本
 │   └── README.md              # 模块说明文档
 │
 ├── frontend/                   # 前端项目（React + TypeScript + Vite）
@@ -270,8 +283,10 @@ ai-agent-orchestrator/
 - JDK 21+
 - Maven 3.6+
 - Node.js 18+ 和 npm（用于前端开发）
+- Python 3.8+（用于OCR服务）
 - Docker & Docker Compose（用于启动依赖服务）
 - Ollama（可选，用于本地LLM功能，参考 [local-llm-client/README.md](local-llm-client/README.md)）
+- ffprobe（可选，用于视频/图片清晰度判断）
 
 ### 启动依赖服务
 
@@ -312,6 +327,21 @@ mvn spring-boot:run
 
 # 或使用jar包运行
 java -jar local-llm-client/target/local-llm-client-1.0.0-SNAPSHOT.jar
+
+# 运行OCR服务（独立Python服务，端口 8082）
+cd ocr-service-python
+
+# 方式一：使用启动脚本（推荐）
+./start.sh
+
+# 方式二：手动启动
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python3 app.py
+
+# 或使用uvicorn
+uvicorn app:app --host 0.0.0.0 --port 8082
 ```
 
 ### 启动前端
@@ -342,6 +372,12 @@ curl http://localhost:8080/actuator/prometheus
 # 本地LLM客户端健康检查
 curl http://localhost:8081/api/llm/health
 
+# OCR服务健康检查
+curl http://localhost:8082/health
+
+# OCR服务API文档
+# 浏览器访问: http://localhost:8082/docs
+
 # 前端页面
 # 浏览器访问: http://localhost:3000
 ```
@@ -351,8 +387,12 @@ curl http://localhost:8081/api/llm/health
 - **前端页面**: http://localhost:3000
   - 任务列表：http://localhost:3000/
   - 本地LLM：http://localhost:3000/llm
+  - OCR识别：http://localhost:3000/ocr
 - **主应用API**: http://localhost:8080
 - **本地LLM客户端API**: http://localhost:8081
+- **OCR服务API**: http://localhost:8082
+  - API文档：http://localhost:8082/docs
+  - 健康检查：http://localhost:8082/health
 
 ### 访问监控面板
 
@@ -420,13 +460,21 @@ curl http://localhost:8081/api/llm/health
   - 多模态推理支持（文本+图片）
   - 文件上传功能
   - Token使用量统计
+  - 视频/图片清晰度判断（基于ffprobe）
+  - 前端交互页面
+- **OCR识别服务模块**（ocr-service-python）
+  - 独立Python服务，基于PaddleOCR 3.3
+  - FastAPI提供HTTP API接口
+  - 支持文件上传和路径两种识别方式
+  - 返回文本、置信度、位置坐标
+  - 支持中文、英文识别
   - 前端交互页面
 - 视频处理（VideoExtractor、VideoMetadataExtractor）
 - 配置管理（Nacos Config）
 - 服务发现（Nacos Service Registry）
 - 监控系统（Prometheus + Grafana + AlertManager）
 - 状态存储（Redis、LLM缓存）
-- 前端页面（任务列表、本地LLM交互）
+- 前端页面（任务列表、本地LLM交互、OCR识别）
 
 ### 🚧 进行中
 - 质量治理层（DualCheckValidator、SelfCorrectionHandler）
@@ -460,6 +508,7 @@ curl http://localhost:8081/api/llm/health
 ## 📚 相关文档
 
 - [本地LLM客户端文档](local-llm-client/README.md) - 本地LLM客户端使用说明
+- [OCR服务文档](ocr-service-python/README.md) - OCR识别服务使用说明
 - [前端快速开始](frontend/QUICK_START.md) - 前端开发指南
 - [Prompt工程概览](PROMPT_ENGINEERING_OVERVIEW.md) - Prompt工程架构说明
 - [参考代码](reference/old-project/README.md) - 旧项目参考代码说明

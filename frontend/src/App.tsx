@@ -3,6 +3,7 @@ import { Layout } from 'antd'
 import TaskList from './pages/TaskList'
 import TaskDetail from './pages/TaskDetail'
 import LocalLLM from './pages/LocalLLM'
+import OCR from './pages/OCR'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import './App.css'
@@ -33,6 +34,7 @@ function App() {
               <Route path="/" element={<TaskList />} />
               <Route path="/tasks/:taskId" element={<TaskDetail />} />
               <Route path="/llm" element={<LocalLLM />} />
+              <Route path="/ocr" element={<OCR />} />
             </Routes>
           </Content>
         </Layout>
